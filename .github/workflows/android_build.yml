@@ -48,28 +48,53 @@ jobs:
         restore-keys: |
           pip-v5-${{ runner.os }}-
 
-    - name: Accept Android SDK licenses
+    - name: Setup Android SDK for Buildozer
       run: |
         mkdir -p ~/.android && touch ~/.android/repositories.cfg
-        # Write license hashes to BOTH possible locations:
-        # 1) ~/.android/licenses  (standard location)
-        # 2) buildozer's own SDK path (where its sdkmanager actually checks)
-        for LICENSE_DIR in \
-          ~/.android/licenses \
-          ~/.buildozer/android/platform/android-sdk/licenses; do
-          mkdir -p "$LICENSE_DIR"
+
+        # Buildozer downloads its SDK to this path. We pre-populate it so
+        # buildozer finds sdkmanager + pre-installed build-tools without
+        # needing interactive license acceptance.
+        BSDK=~/.buildozer/android/platform/android-sdk
+
+        # ── Download Android cmdline-tools ──────────────────────────────
+        mkdir -p $BSDK/cmdline-tools
+        wget -q "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" \
+          -O /tmp/cmdtools.zip
+        unzip -q /tmp/cmdtools.zip -d $BSDK/cmdline-tools
+        # Rename to the canonical "latest" slot
+        mv $BSDK/cmdline-tools/cmdline-tools $BSDK/cmdline-tools/latest
+
+        # Create the legacy tools/bin/sdkmanager path buildozer checks first
+        mkdir -p $BSDK/tools/bin
+        ln -sf $BSDK/cmdline-tools/latest/bin/sdkmanager $BSDK/tools/bin/sdkmanager
+
+        SDKM=$BSDK/cmdline-tools/latest/bin/sdkmanager
+        export ANDROID_SDK_ROOT=$BSDK
+
+        # ── Accept all licenses (hash files + interactive) ──────────────
+        mkdir -p $BSDK/licenses ~/.android/licenses
+        for LDIR in $BSDK/licenses ~/.android/licenses; do
           printf '8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n' \
-            > "$LICENSE_DIR/android-sdk-license"
+            > $LDIR/android-sdk-license
           printf '84831b9409646a918e30573bab4c9c91346d8abd\n' \
-            > "$LICENSE_DIR/android-sdk-preview-license"
+            > $LDIR/android-sdk-preview-license
           printf 'd975f751698a77b662f1254ddbeed3901e976f5a\n' \
-            > "$LICENSE_DIR/intel-android-extra-license"
+            > $LDIR/intel-android-extra-license
           printf '33b6a2b64607f11b759f320ef9dff4ae5c47d97a\n' \
-            > "$LICENSE_DIR/android-sdk-arm-dbt-license"
+            > $LDIR/android-sdk-arm-dbt-license
           printf '601085b94cd77f0b54ff86406957099ebe79c4d6\n' \
-            > "$LICENSE_DIR/android-googletv-license"
+            > $LDIR/android-googletv-license
         done
-        yes | sdkmanager --licenses 2>/dev/null || true
+        yes | $SDKM --licenses 2>/dev/null || true
+
+        # ── Pre-install build-tools 34.0.0 (matches buildozer.spec) ─────
+        $SDKM --sdk_root=$BSDK "build-tools;34.0.0" "platform-tools" \
+          "platforms;android-31" 2>/dev/null
+
+        echo "=== SDK layout ==="
+        ls -la $BSDK/
+        ls -la $BSDK/build-tools/ 2>/dev/null || echo "build-tools not present"
 
     - name: Show spec requirements
       run: grep -E "^requirements|^android\." buildozer.spec || true

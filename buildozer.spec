@@ -42,6 +42,9 @@ android.minapi = 24
 # Android NDK version
 android.ndk = 25b
 
+# Build-tools version — must match what we pre-install in CI
+android.build_tools_version = 34.0.0
+
 # Private data storage
 android.private_storage = True
 
