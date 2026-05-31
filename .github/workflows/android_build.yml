@@ -28,7 +28,7 @@ jobs:
     - name: Install System Build Dependencies
       run: |
         sudo apt-get update --fix-missing -qq
-        sudo apt-get install -y autoconf automake libtool pkg-config libffi-dev libssl-dev ccache unzip build-essential libltdl-dev git zlib1g-dev libncurses5
+        sudo apt-get install -y autoconf automake libtool pkg-config libffi-dev libssl-dev ccache unzip build-essential libltdl-dev git zlib1g-dev libncurses-dev
         pip install --upgrade pip
         pip install --upgrade buildozer cython
 
@@ -36,17 +36,17 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.buildozer
-        key: buildozer-v3-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+        key: buildozer-v4-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
         restore-keys: |
-          buildozer-v3-${{ runner.os }}-
+          buildozer-v4-${{ runner.os }}-
 
     - name: Cache pip packages
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: pip-v3-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+        key: pip-v4-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          pip-v3-${{ runner.os }}-
+          pip-v4-${{ runner.os }}-
 
     - name: Accept Android SDK Licenses
       run: |
@@ -56,7 +56,7 @@ jobs:
     - name: Verify buildozer.spec
       run: |
         echo "=== Requirements ==="
-        grep -E "^requirements|^android" buildozer.spec | grep -v "^#"
+        grep -vE "^\s*#|^\s*$" buildozer.spec | grep -E "^requirements|^android"
 
     - name: Build Debug APK
       run: |
