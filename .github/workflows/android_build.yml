@@ -1,0 +1,99 @@
+name: Build Zekra APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+    - name: Checkout Code Repository
+      uses: actions/checkout@v4
+
+    - name: Set up OpenJDK 17 (Stable)
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Set up Python Environment
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Core Dependencies & Autoconf Failure Prevention
+      run: |
+        sudo apt-get update --fix-missing
+        sudo apt-get install -y \
+          autoconf automake libtool pkg-config \
+          libffi-dev libssl-dev ccache unzip \
+          build-essential libltdl-dev \
+          git zlib1g-dev
+        pip install --upgrade pip virtualenv
+        pip install --upgrade buildozer cython
+
+    - name: Cache Buildozer Global Directory
+      uses: actions/cache@v4
+      with:
+        path: ~/.buildozer
+        key: buildozer-global-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+        restore-keys: |
+          buildozer-global-${{ runner.os }}-
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          pip-${{ runner.os }}-
+
+    - name: Accept Android SDK Licenses
+      run: |
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
+        yes | sdkmanager --licenses 2>/dev/null || true
+
+    - name: Strict Buildozer Specification Auto-Patching
+      run: |
+        # Force minapi to 24 for modern binary compliance
+        sed -i 's/.*android\.minapi.*/android.minapi = 24/g' buildozer.spec
+
+        # Pin numpy to 1.21.0 to bypass unique.cpp C++ compilation bugs
+        sed -i 's/^requirements = .*/requirements = python3,kivy,numpy==1.21.0,opencv-python-headless,onnxruntime/g' buildozer.spec
+
+        # Enable verbose output for self-diagnosis on failure
+        sed -i 's/^log_level = .*/log_level = 2/g' buildozer.spec
+
+        echo "=== Final buildozer.spec ==="
+        cat buildozer.spec
+
+    - name: Download YOLOv8 ONNX Model
+      run: |
+        python download_model.py || echo "[WARN] Model download skipped — will use placeholder"
+
+    - name: Compile and Build Production APK
+      run: |
+        yes | buildozer android debug 2>&1 | tee buildozer_build.log
+      env:
+        JAVA_HOME: ${{ env.JAVA_HOME }}
+
+    - name: Upload Build Log on Failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Zekra-Build-Log
+        path: buildozer_build.log
+        retention-days: 7
+
+    - name: Secure Final APK Delivery
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Zekra-Offline-AI-App
+        path: bin/*.apk
+        retention-days: 30
