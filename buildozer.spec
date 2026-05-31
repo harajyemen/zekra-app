@@ -39,8 +39,8 @@ android.api = 31
 # Minimum API
 android.minapi = 24
 
-# Android NDK version
-android.ndk = 25b
+# Android NDK version — r27c is the minimum needed for numpy 2.x (NDK r25 libc++ is incompatible)
+android.ndk = 27c
 
 # Build-tools version — must match what we pre-install in CI
 android.build_tools_version = 34.0.0

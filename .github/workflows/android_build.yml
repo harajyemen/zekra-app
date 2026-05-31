@@ -92,6 +92,15 @@ jobs:
         $SDKM --sdk_root=$BSDK "build-tools;34.0.0" "platform-tools" \
           "platforms;android-31" 2>/dev/null
 
+        # ── Symlink system NDK r27 so buildozer skips the ~1GB download ─
+        # Runner has NDK 27.3 pre-installed; buildozer looks for android-ndk-r27c
+        BPLATFORM=~/.buildozer/android/platform
+        SYSTEM_NDK=$(ls -d /usr/local/lib/android/sdk/ndk/27.* 2>/dev/null | sort -V | tail -1)
+        if [ -n "$SYSTEM_NDK" ]; then
+          ln -sf "$SYSTEM_NDK" "$BPLATFORM/android-ndk-r27c"
+          echo "Symlinked NDK r27c -> $SYSTEM_NDK"
+        fi
+
         echo "=== SDK layout ==="
         ls -la $BSDK/
         ls -la $BSDK/build-tools/ 2>/dev/null || echo "build-tools not present"
