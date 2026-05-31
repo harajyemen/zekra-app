@@ -50,7 +50,7 @@ jobs:
 
     - name: Accept Android SDK licenses
       run: |
-        touch ~/.android/repositories.cfg
+        mkdir -p ~/.android && touch ~/.android/repositories.cfg
         # Write license hashes to BOTH possible locations:
         # 1) ~/.android/licenses  (standard location)
         # 2) buildozer's own SDK path (where its sdkmanager actually checks)
