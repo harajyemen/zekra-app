@@ -1,37 +1,21 @@
 [app]
 
-  # اسم التطبيق
   title = Zekra AI
-
-  # اسم الحزمة
   package.name = zekraai
-
-  # نطاق الحزمة
   package.domain = org.zekra
-
-  # مجلد الكود المصدري
   source.dir = .
-
-  # أنواع الملفات المضمنة في البناء
   source.include_exts = py,png,jpg,kv,atlas,json,txt,onnx
-
-  # استثناء ملفات غير ضرورية
   source.exclude_exts = spec
   source.exclude_dirs = tests,bin,venv,.git,__pycache__
-
-  # إصدار التطبيق
   version = 2.0.0
 
-  # المتطلبات — فقط المتوافق مع أندرويد، بدون onnxruntime العامة
-  requirements = python3,kivy,numpy,cython,android,jnius
+  # الإصلاح الحرج: تثبيت numpy على 1.26.4 (آخر نسخة تتوافق مع NDK r25c)
+  # numpy 2.x تستخدم std::unordered_map بطريقة غير متوافقة مع libc++ في NDK r25c
+  requirements = python3,kivy,numpy==1.26.4,cython,android,jnius
 
-  # الاتجاه
   orientation = all
-
-  # خدمة الخلفية
   android.services = ZekraService:service.py:foreground
 
-  # الصلاحيات الحتمية
   android.permissions = \
       CAMERA,\
       FOREGROUND_SERVICE,\
@@ -41,41 +25,21 @@
       WRITE_EXTERNAL_STORAGE,\
       SYSTEM_ALERT_WINDOW,\
       WAKE_LOCK,\
-      RECEIVE_BOOT_COMPLETED,\
-      REQUEST_INSTALL_PACKAGES
+      RECEIVE_BOOT_COMPLETED
 
-  # حقن صلاحية الـ Overlay الحرجة مباشرةً في AndroidManifest.xml
-  android.add_activities = android.media.projection.MediaProjectionActivity
-
-  # إصدار أندرويد المستهدف
   android.api = 33
-
-  # أدنى إصدار مدعوم
   android.minapi = 26
 
-  # إصدار NDK
+  # الإصلاح: NDK 25c هو ما يُحمَّل فعلاً في بيئة GitHub Actions
   android.ndk = 25c
 
-  # إصدار Build Tools
-  android.build_tools_version = 33.0.0
-
-  # التخزين الخاص
+  android.build_tools_version = 34.0.0
   android.private_storage = True
-
-  # النسخ الاحتياطي
   android.allow_backup = False
-
-  # المعمارية المستهدفة — arm64 فقط للهواتف الحديثة
   android.archs = arm64-v8a
-
-  # ملء الشاشة الكاملة
   android.fullscreen = 1
-
-  # فلاتر الـ logcat لتتبع الأخطاء بوضوح
+  android.foreground_service = True
   android.logcat_filters = *:S python:D Zekra:V
-
-  # تفعيل التوقيع التلقائي للنسخة التجريبية
-  android.release = False
 
   [buildozer]
   log_level = 2
