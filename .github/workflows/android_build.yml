@@ -52,13 +52,8 @@ jobs:
       run: |
         mkdir -p ~/.android && touch ~/.android/repositories.cfg
 
-        # Buildozer downloads its SDK to this path. We pre-populate it so
-        # buildozer finds sdkmanager + pre-installed build-tools without
-        # needing interactive license acceptance.
         BSDK=~/.buildozer/android/platform/android-sdk
 
-        # ── Download Android cmdline-tools ──────────────────────────────
-        # [تعديل ذكي] تنظيف أي مخلفات سابقة مسترجعة من الكاش لتفادي تعارض النقل
         rm -rf /tmp/cmdtools.zip
         rm -rf cmdline-tools
         
@@ -67,19 +62,16 @@ jobs:
           -O /tmp/cmdtools.zip
         unzip -q /tmp/cmdtools.zip -d /tmp/unzipped_cmdtools
         
-        # [تعديل جوهري] حذف المسار المستهدف النهائي بالكامل لضمان نجاح أمر الـ mv دون خطأ "المجلد ليس فارغاً"
         rm -rf $BSDK/cmdline-tools/latest
         mv /tmp/unzipped_cmdtools/cmdline-tools $BSDK/cmdline-tools/latest
         rm -rf /tmp/unzipped_cmdtools
 
-        # Create the legacy tools/bin/sdkmanager path buildozer checks first
         mkdir -p $BSDK/tools/bin
         ln -sf $BSDK/cmdline-tools/latest/bin/sdkmanager $BSDK/tools/bin/sdkmanager
 
         SDKM=$BSDK/cmdline-tools/latest/bin/sdkmanager
         export ANDROID_SDK_ROOT=$BSDK
 
-        # ── Accept all licenses (hash files + interactive) ──────────────
         mkdir -p $BSDK/licenses ~/.android/licenses
         for LDIR in $BSDK/licenses ~/.android/licenses; do
           printf '8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n' \
@@ -95,12 +87,9 @@ jobs:
         done
         yes | $SDKM --licenses 2>/dev/null || true
 
-        # ── Pre-install build-tools 34.0.0 (matches buildozer.spec) ─────
         $SDKM --sdk_root=$BSDK "build-tools;34.0.0" "platform-tools" \
           "platforms;android-31" 2>/dev/null
 
-        # ── Symlink system NDK r27 so buildozer skips the ~1GB download ─
-        # Runner has NDK 27.3 pre-installed; buildozer looks for android-ndk-r27c
         BPLATFORM=~/.buildozer/android/platform
         mkdir -p $BPLATFORM
         SYSTEM_NDK=$(ls -d /usr/local/lib/android/sdk/ndk/27.* 2>/dev/null | sort -V | tail -1)
@@ -114,11 +103,16 @@ jobs:
         ls -la $BSDK/
         ls -la $BSDK/build-tools/ 2>/dev/null || echo "build-tools not present"
 
+    # [خطوة حتمية مضافة] تشغيل سكريبت تحميل الموديل لضمان دمجه داخل الـ APK بنجاح
+    - name: Pre-download YOLOv8 ONNX Model
+      run: python download_model.py
+
     - name: Show spec requirements
       run: grep -E "^requirements|^android\." buildozer.spec || true
 
+    # [تعديل برمي] توجيه المخرجات لملف لوق لضمان حفظه ورفعه في حال الفشل
     - name: Build debug APK
-      run: buildozer -v android debug
+      run: buildozer -v android debug 2>&1 | tee buildozer_build.log
       env:
         JAVA_HOME: ${{ env.JAVA_HOME }}
 
