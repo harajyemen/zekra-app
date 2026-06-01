@@ -38,17 +38,17 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.buildozer
-        key: buildozer-v9-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+        key: buildozer-v10-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
         restore-keys: |
-          buildozer-v9-${{ runner.os }}-
+          buildozer-v10-${{ runner.os }}-
 
     - name: Cache pip
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: pip-v9-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+        key: pip-v10-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          pip-v9-${{ runner.os }}-
+          pip-v10-${{ runner.os }}-
 
     - name: Setup Android SDK and NDK r25c
       run: |
@@ -56,36 +56,55 @@ jobs:
         BSDK=$HOME/.buildozer/android/platform/android-sdk
         BPLATFORM=$HOME/.buildozer/android/platform
         mkdir -p $BSDK/cmdline-tools $BPLATFORM
+
+        # تحميل Android Command Line Tools
         wget -q 'https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip' -O /tmp/cmdtools.zip
         unzip -q /tmp/cmdtools.zip -d /tmp/unzipped_cmdtools
         rm -rf $BSDK/cmdline-tools/latest
         mv /tmp/unzipped_cmdtools/cmdline-tools $BSDK/cmdline-tools/latest
+
+        # إنشاء المسار القديم الذي يتوقعه buildozer: tools/bin/sdkmanager
+        mkdir -p $BSDK/tools/bin
+        ln -sf $BSDK/cmdline-tools/latest/bin/sdkmanager $BSDK/tools/bin/sdkmanager
+        ln -sf $BSDK/cmdline-tools/latest/bin/avdmanager $BSDK/tools/bin/avdmanager
+
         SDKM=$BSDK/cmdline-tools/latest/bin/sdkmanager
         export ANDROID_SDK_ROOT=$BSDK
+
+        # قبول التراخيص
         mkdir -p $BSDK/licenses ~/.android/licenses
         for LDIR in $BSDK/licenses ~/.android/licenses; do
           printf '8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n' > $LDIR/android-sdk-license
           printf '84831b9409646a918e30573bab4c9c91346d8abd\n' > $LDIR/android-sdk-preview-license
         done
         yes | $SDKM --licenses 2>/dev/null || true
+
+        # تثبيت Build Tools و Platform API 33
         $SDKM --sdk_root=$BSDK 'build-tools;34.0.0' 'platform-tools' 'platforms;android-33' 2>/dev/null
+
+        # إعداد NDK r25c
         SYSTEM_NDK=$(ls -d /usr/local/lib/android/sdk/ndk/25.* 2>/dev/null | sort -V | tail -1)
         if [ -n "$SYSTEM_NDK" ]; then
           echo "Using system NDK r25: $SYSTEM_NDK"
           rm -f $BPLATFORM/android-ndk-r25c
           ln -sf $SYSTEM_NDK $BPLATFORM/android-ndk-r25c
         else
-          echo 'Downloading NDK r25c...'
+          echo 'Downloading NDK r25c from Google...'
           wget -q 'https://dl.google.com/android/repository/android-ndk-r25c-linux.zip' -O /tmp/ndk.zip
           unzip -q /tmp/ndk.zip -d $BPLATFORM
         fi
+
+        echo '=== SDK Setup Complete ==='
+        echo 'sdkmanager symlink:' && ls -la $BSDK/tools/bin/sdkmanager
         echo 'NDK available:' && ls $BPLATFORM/ | grep ndk
 
     - name: Download YOLOv8 ONNX Model
       run: python3 download_model.py
 
     - name: Build debug APK
-      run: buildozer -v android debug 2>&1 | tee buildozer_build.log
+      run: |
+        set -o pipefail
+        buildozer -v android debug 2>&1 | tee buildozer_build.log
       env:
         JAVA_HOME: ${{ env.JAVA_HOME }}
 
