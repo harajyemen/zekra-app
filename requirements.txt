@@ -1,5 +1,7 @@
-# Zekra AI Camera Processor - Clean Android Requirements
-# تصفية شاملة لمنع تعارض حزم C++ والثنائيات المسببة للكراش
+# Zekra AI - Android Compatible Requirements
+  # فقط المكتبات المتوافقة مع أندرويد ARM64 بدون أي مكتبات C++ إشكالية
 
-kivy>=2.2.0
-cython
+  kivy>=2.2.0
+  cython
+  numpy
+  
