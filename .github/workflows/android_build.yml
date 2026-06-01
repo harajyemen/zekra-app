@@ -1,76 +1,125 @@
-#!/usr/bin/env python3
-"""
-YOLOv8 ONNX Model Download Script - Verified CI Edition
-======================================================
-Automated script using the official ultralytics package to safely download 
-and verify the YOLOv8n ONNX model during GitHub Actions build.
+name: Build Zekra APK
 
-Author: AI Development Team
-Version: 1.4.0 (Verified Official Flow)
-"""
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
 
-import os
-import sys
-import subprocess
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
 
-def download_via_official_api() -> bool:
-    target_path = "yolov8n.onnx"
-    
-    print("[INFO] Installing/Verifying official ultralytics package in CI runner...")
-    try:
-        # تثبيت المكتبة الرسمية صامتاً لضمان توفر أداة التحميل المستقرة
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "ultralytics"])
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up OpenJDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install system build dependencies
+      run: |
+        sudo apt-get update --fix-missing -qq
+        sudo apt-get install -y autoconf automake libtool pkg-config libffi-dev libssl-dev ccache unzip build-essential libltdl-dev git zlib1g-dev libncurses-dev
+        pip install --upgrade pip
+        pip install --upgrade buildozer cython ultralytics
+
+    - name: Cache Buildozer global directory
+      uses: actions/cache@v4
+      with:
+        path: ~/.buildozer
+        key: buildozer-v5-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+        restore-keys: |
+          buildozer-v5-${{ runner.os }}-
+
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: pip-v5-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          pip-v5-${{ runner.os }}-
+
+    - name: Setup Android SDK for Buildozer
+      run: |
+        mkdir -p ~/.android && touch ~/.android/repositories.cfg
+        BSDK=~/.buildozer/android/platform/android-sdk
         
-        # استدعاء دالة التحميل والتصدير الرسمية مباشرة من بايثون
-        print("[INFO] Fetching and exporting YOLOv8n to ONNX via official API...")
-        from ultralytics import YOLO
+        rm -rf /tmp/cmdtools.zip cmdline-tools
+        mkdir -p $BSDK/cmdline-tools
         
-        # تحميل الموديل الأساسي (سيتم جلبه من خادم التوزيع الرسمي المستقر حالياً)
-        model = YOLO("yolov8n.pt")
+        wget -q "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -O /tmp/cmdtools.zip
+        unzip -q /tmp/cmdtools.zip -d /tmp/unzipped_cmdtools
         
-        # تصديره بصيغة ONNX في المجلد الحالي مباشرة
-        model.export(format="onnx", imgsz=640, opset=12, simplify=True, dynamic=False)
-        
-        # التحقق من وجود الملف وسلامة حجمه على القرص
-        if os.path.exists(target_path) and os.path.getsize(target_path) > 1024 * 1024:
-            file_size_mb = os.path.getsize(target_path) / 1024 / 1024
-            print(f"[SUCCESS] Official Model verified and saved: {os.path.abspath(target_path)}")
-            print(f"[INFO] Final Model Size: {file_size_mb:.2f} MB")
-            return True
-        else:
-            print("[ERROR] Export finished but output file is missing or invalid.")
-            return False
-            
-    except Exception as official_error:
-        print(f"[CRITICAL] Official API method failed: {official_error}")
-        return False
+        rm -rf $BSDK/cmdline-tools/latest
+        mv /tmp/unzipped_cmdtools/cmdline-tools $BSDK/cmdline-tools/latest
+        rm -rf /tmp/unzipped_cmdtools
 
-def main():
-    print("=" * 60)
-    print("Verified YOLOv8 ONNX Automated Downloader")
-    print("=" * 60)
+        mkdir -p $BSDK/tools/bin
+        ln -sf $BSDK/cmdline-tools/latest/bin/sdkmanager $BSDK/tools/bin/sdkmanager
 
-    target_path = "yolov8n.onnx"
-    
-    # إذا كان الملف تم تحميله بنجاح سابقاً وموجود في الكاش، يتخطى العملية
-    if os.path.exists(target_path) and os.path.getsize(target_path) > 1024 * 1024:
-        print(f"[INFO] Model already exists locally: {os.path.abspath(target_path)}")
-        sys.exit(0)
+        SDKM=$BSDK/cmdline-tools/latest/bin/sdkmanager
+        export ANDROID_SDK_ROOT=$BSDK
 
-    # تشغيل آلية التحميل المضمونة
-    success = download_via_official_api()
+        mkdir -p $BSDK/licenses ~/.android/licenses
+        for LDIR in $BSDK/licenses ~/.android/licenses; do
+          printf '8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n' > $LDIR/android-sdk-license
+          printf '84831b9409646a918e30573bab4c9c91346d8abd\n' > $LDIR/android-sdk-preview-license
+          printf 'd975f751698a77b662f1254ddbeed3901e976f5a\n' > $LDIR/intel-android-extra-license
+          printf '33b6a2b64607f11b759f320ef9dff4ae5c47d97a\n' > $LDIR/android-sdk-arm-dbt-license
+          printf '601085b94cd77f0b54ff86406957099ebe79c4d6\n' > $LDIR/android-googletv-license
+        done
+        yes | $SDKM --licenses 2>/dev/null || true
 
-    print()
-    if success:
-        print("=" * 60)
-        print("[SUCCESS] Model inclusion complete. Ready for Buildozer.")
-        print("=" * 60)
-        sys.exit(0)
-    else:
-        print("=" * 60)
-        print("[FAIL] Model preparation failed. Review errors above.")
-        print("=" * 60)
-        sys.exit(1)
+        $SDKM --sdk_root=$BSDK "build-tools;34.0.0" "platform-tools" "platforms;android-31" 2>/dev/null
 
-if __name__ == "__main__":
-    main()
+        BPLATFORM=~/.buildozer/android/platform
+        mkdir -p $BPLATFORM
+        SYSTEM_NDK=$(ls -d /usr/local/lib/android/sdk/ndk/27.* 2>/dev/null | sort -V | tail -1)
+        if [ -n "$SYSTEM_NDK" ]; then
+          rm -f "$BPLATFORM/android-ndk-r27c"
+          ln -sf "$SYSTEM_NDK" "$BPLATFORM/android-ndk-r27c"
+        fi
+
+    - name: Pre-export YOLOv8 ONNX Model Officially
+      run: |
+        python3 -c "from ultralytics import YOLO; model = YOLO('yolov8n.pt'); model.export(format='onnx', imgsz=640, opset=12, simplify=True)"
+
+    - name: Show spec requirements
+      run: grep -E "^requirements|^android\." buildozer.spec || true
+
+    - name: Build debug APK
+      run: buildozer -v android debug 2>&1 | tee buildozer_build.log
+      env:
+        JAVA_HOME: ${{ env.JAVA_HOME }}
+
+    - name: List build output
+      if: always()
+      run: |
+        ls -lah bin/ 2>/dev/null || echo "bin/ is empty"
+        find .buildozer -name "*.apk" 2>/dev/null || true
+
+    - name: Upload build log on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Zekra-Build-Log
+        path: buildozer_build.log
+        retention-days: 7
+
+    - name: Upload APK artifact
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Zekra-Offline-AI-App
+        path: bin/*.apk
+        if-no-files-found: error
+        retention-days: 30
