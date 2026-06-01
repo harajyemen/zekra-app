@@ -36,17 +36,17 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.buildozer
-        key: buildozer-v5-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+        key: buildozer-v6-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
         restore-keys: |
-          buildozer-v5-${{ runner.os }}-
+          buildozer-v6-${{ runner.os }}-
 
     - name: Cache pip
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: pip-v5-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+        key: pip-v6-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          pip-v5-${{ runner.os }}-
+          pip-v6-${{ runner.os }}-
 
     - name: Setup Android SDK for Buildozer
       run: |
@@ -93,19 +93,10 @@ jobs:
       run: |
         python3 -c "from ultralytics import YOLO; model = YOLO('yolov8n.pt'); model.export(format='onnx', imgsz=640, opset=12, simplify=True)"
 
-    - name: Show spec requirements
-      run: grep -E "^requirements|^android\." buildozer.spec || true
-
     - name: Build debug APK
       run: buildozer -v android debug 2>&1 | tee buildozer_build.log
       env:
         JAVA_HOME: ${{ env.JAVA_HOME }}
-
-    - name: List build output
-      if: always()
-      run: |
-        ls -lah bin/ 2>/dev/null || echo "bin/ is empty"
-        find .buildozer -name "*.apk" 2>/dev/null || true
 
     - name: Upload build log on failure
       if: failure()
