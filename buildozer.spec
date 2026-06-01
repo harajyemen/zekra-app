@@ -1,69 +1,82 @@
 [app]
 
-# Title of your application
+# (str) Title of your application
 title = On-Device AI Camera Processor
 
-# Package name
+# (str) Package name
 package.name = aicameraprocessor
 
-# Package domain
+# (str) Package domain
 package.domain = org.offline
 
-# Source code directory
+# (str) Source code directory where the main.py lives
 source.dir = .
 
-# Source files to include
+# (list) Source files to include
 source.include_exts = py,png,jpg,kv,atlas,json,txt
 
-# Exclude onnx model (downloaded at runtime)
+# (list) Exclude onnx model (downloaded at runtime)
 source.exclude_exts = spec,onnx
 
-# Application version
+# (str) Application version
 version = 1.0.0
 
-# Requirements:
-#   opencv     = p4a recipe (NOT opencv-python-headless, desktop-only)
-#   numpy      = no version pin (p4a recipe handles version internally)
-#   onnxruntime = installed via pip wheel
-requirements = python3,kivy,numpy,opencv,onnxruntime
+# (list) Application requirements
+# تم الحفاظ على معاييرك وإضافة jnius و android لربط أذونات البث
+requirements = python3,kivy,numpy,opencv,onnxruntime,jnius,android
 
-# Supported orientation
+# (str) Supported orientation
 orientation = all
 
-# Android permissions
-android.permissions = CAMERA,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,VIBRATE,WAKE_LOCK
+# (list) Permissions of your application
+# تم دمج صلاحياتك القديمة مع صلاحيات البث المباشر والظهور فوق ببجي الحتمية
+android.permissions = CAMERA, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE, VIBRATE, WAKE_LOCK, FOREGROUND_SERVICE, FOREGROUND_SERVICE_MEDIA_PROJECTION, SYSTEM_ALERT_WINDOW
 
-# Target Android API
+# (str) Extra Manifest XML to inject into AndroidManifest.xml (Crucial for PUBG Overlay)
+# هذا السطر يجبر نظام الأندرويد على إعطاء التطبيق ميزة الرسم فوق الألعاب
+android.manifest.permissions = android.permission.SYSTEM_ALERT_WINDOW
+
+# (list) Services to declare
+# ربط الخدمة الخلفية لضمان استمرار البث المباشر والذكاء الاصطناعي أثناء اللعب
+android.services = myservice:service.py
+
+# (int) Target Android API
 android.api = 31
 
-# Minimum API
+# (int) Minimum API
 android.minapi = 24
 
-# Android NDK version — r27c is the minimum needed for numpy 2.x (NDK r25 libc++ is incompatible)
+# (str) Android NDK version — r27c is the minimum needed for numpy 2.x
 android.ndk = 27c
 
-# Build-tools version — must match what we pre-install in CI
+# (str) Build-tools version — must match what we pre-install in CI
 android.build_tools_version = 34.0.0
 
-# Private data storage
+# (bool) Private data storage
 android.private_storage = True
 
-# Android auto backup
+# (bool) Android auto backup
 android.allow_backup = True
 
-# Build for arm64-v8a only (faster; covers all modern devices)
+# (list) Build for arm64-v8a only (faster; covers all modern devices like S21 Ultra)
 android.archs = arm64-v8a
 
-# Full screen
+# (bool) Full screen
 android.fullscreen = True
 
-# Debug build - no signing keystore needed
+# (bool) Allow service to be run in foreground
+android.foreground_service = True
+
+# (bool) Debug build - no signing keystore needed
 android.release = False
+
+# (str) android logcat filters to use
+android.logcat_filters = *:S python:D
 
 [buildozer]
 
-# Log level (2 = debug with full output)
+# (int) Log level (2 = debug with full output)
 log_level = 2
 
-# Warn if run as root
+# (int) Warn if run as root
 warn_on_root = 1
