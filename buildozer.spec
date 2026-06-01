@@ -1,79 +1,83 @@
 [app]
 
-# (str) Title of your application
-title = On-Device AI Camera Processor
+  # اسم التطبيق
+  title = Zekra AI
 
-# (str) Package name
-package.name = aicameraprocessor
+  # اسم الحزمة
+  package.name = zekraai
 
-# (str) Package domain
-package.domain = org.offline
+  # نطاق الحزمة
+  package.domain = org.zekra
 
-# (str) Source code directory where the main.py lives
-source.dir = .
+  # مجلد الكود المصدري
+  source.dir = .
 
-# (list) Source files to include (تأكيد تضمين ملف الـ onnx هنا)
-source.include_exts = py,png,jpg,kv,atlas,json,txt,onnx
+  # أنواع الملفات المضمنة في البناء
+  source.include_exts = py,png,jpg,kv,atlas,json,txt,onnx
 
-# (list) Exclude specific extensions from the build
-source.exclude_exts = spec
+  # استثناء ملفات غير ضرورية
+  source.exclude_exts = spec
+  source.exclude_dirs = tests,bin,venv,.git,__pycache__
 
-# (str) Application version
-version = 1.0.0
+  # إصدار التطبيق
+  version = 2.0.0
 
-# (list) Application requirements
-# تصحيح شامل: الاعتماد على النسخ المتوافقة مع أندرويد وإزالة onnxruntime المسببة للكراش المباشر
-requirements = python3,kivy,numpy,opencv-python,jnius,android
+  # المتطلبات — فقط المتوافق مع أندرويد، بدون onnxruntime العامة
+  requirements = python3,kivy,numpy,cython,android,jnius
 
-# (str) Supported orientation
-orientation = all
+  # الاتجاه
+  orientation = all
 
-# (list) Permissions of your application
-android.permissions = CAMERA, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE, VIBRATE, WAKE_LOCK, FOREGROUND_SERVICE, FOREGROUND_SERVICE_MEDIA_PROJECTION, SYSTEM_ALERT_WINDOW
+  # خدمة الخلفية
+  android.services = ZekraService:service.py:foreground
 
-# (str) Extra Manifest XML to inject into AndroidManifest.xml (Crucial for PUBG Overlay)
-android.manifest.permissions = android.permission.SYSTEM_ALERT_WINDOW
+  # الصلاحيات الحتمية
+  android.permissions = \
+      CAMERA,\
+      FOREGROUND_SERVICE,\
+      FOREGROUND_SERVICE_MEDIA_PROJECTION,\
+      RECORD_AUDIO,\
+      READ_EXTERNAL_STORAGE,\
+      WRITE_EXTERNAL_STORAGE,\
+      SYSTEM_ALERT_WINDOW,\
+      WAKE_LOCK,\
+      RECEIVE_BOOT_COMPLETED,\
+      REQUEST_INSTALL_PACKAGES
 
-# (list) Services to declare
-android.services = myservice:service.py
+  # حقن صلاحية الـ Overlay الحرجة مباشرةً في AndroidManifest.xml
+  android.add_activities = android.media.projection.MediaProjectionActivity
 
-# (int) Target Android API
-android.api = 31
+  # إصدار أندرويد المستهدف
+  android.api = 33
 
-# (int) Minimum API
-android.minapi = 24
+  # أدنى إصدار مدعوم
+  android.minapi = 26
 
-# (str) Android NDK version
-android.ndk = 27c
+  # إصدار NDK
+  android.ndk = 25c
 
-# (str) Build-tools version
-android.build_tools_version = 34.0.0
+  # إصدار Build Tools
+  android.build_tools_version = 33.0.0
 
-# (bool) Private data storage
-android.private_storage = True
+  # التخزين الخاص
+  android.private_storage = True
 
-# (bool) Android auto backup
-android.allow_backup = True
+  # النسخ الاحتياطي
+  android.allow_backup = False
 
-# (list) Build for arm64-v8a only (faster)
-android.archs = arm64-v8a
+  # المعمارية المستهدفة — arm64 فقط للهواتف الحديثة
+  android.archs = arm64-v8a
 
-# (bool) Full screen
-android.fullscreen = True
+  # ملء الشاشة الكاملة
+  android.fullscreen = 1
 
-# (bool) Allow service to be run in foreground
-android.foreground_service = True
+  # فلاتر الـ logcat لتتبع الأخطاء بوضوح
+  android.logcat_filters = *:S python:D Zekra:V
 
-# (bool) Debug build - no signing keystore needed
-android.release = False
+  # تفعيل التوقيع التلقائي للنسخة التجريبية
+  android.release = False
 
-# (str) android logcat filters to use
-android.logcat_filters = *:S python:D
-
-[buildozer]
-
-# (int) Log level (2 = debug with full output)
-log_level = 2
-
-# (int) Warn if run as root
-warn_on_root = 1
+  [buildozer]
+  log_level = 2
+  warn_on_root = 1
+  
