@@ -1,128 +1,87 @@
 #!/usr/bin/env python3
 """
-YOLOv8 ONNX Model Download Script
-=================================
-Downloads and exports YOLOv8 Nano model in ONNX format for offline inference.
+YOLOv8 ONNX Model Download Script - Automated CI Edition
+========================================================
+Downloads the pre-converted YOLOv8 Nano model in ONNX format 
+automatically for offline deployment. Safe for GitHub Actions & CI builds.
 
-Usage:
-    python download_model.py
+Author: AI Development Team
+Version: 1.2.0 (Silent Automate Build)
 """
 
 import os
 import sys
 import urllib.request
-import subprocess
 
+def download_direct() -> bool:
+    """تحميل مباشر وسريع للنموذج الجاهز والمصنع رسمياً لمنع استهلاك سيرفر البناء"""
+    target_path = "yolov8n.onnx"
+    
+    # الرابط المباشر والأكثر استقراراً المعتمد من Ultralytics للـ ONNX
+    url = "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n.onnx"
+    
+    # رابط احتياطي في حال حدوث أي مشكلة في الرابط الأول
+    fallback_url = "https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.onnx"
 
-def download_with_ultralytics():
-    """Download model using ultralytics library (recommended)."""
+    print("[INFO] Starting direct automated download for YOLOv8n ONNX model...")
+    
     try:
-        print("[INFO] Attempting to download using ultralytics...")
-
+        print(f"[INFO] Downloading from primary source: {url}")
+        urllib.request.urlretrieve(url, target_path)
+    except Exception as primary_error:
+        print(f"[WARN] Primary source failed: {primary_error}")
         try:
-            import ultralytics
-        except ImportError:
-            print("[INFO] Installing ultralytics package...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "ultralytics"])
-            import ultralytics
-
-        from ultralytics import YOLO
-
-        print("[INFO] Downloading YOLOv8 Nano model...")
-        model = YOLO("yolov8n.pt")
-
-        print("[INFO] Exporting to ONNX format...")
-        model.export(format="onnx", imgsz=640, opset=12, simplify=True, dynamic=False)
-
-        export_path = "yolov8n.onnx"
-        if os.path.exists(export_path):
-            print(f"[SUCCESS] Model saved: {os.path.abspath(export_path)}")
-            print(f"[INFO] Model size: {os.path.getsize(export_path) / 1024 / 1024:.2f} MB")
-            return True
-        else:
-            print("[ERROR] Export completed but file not found")
+            print(f"[INFO] Trying fallback source: {fallback_url}")
+            urllib.request.urlretrieve(fallback_url, target_path)
+        except Exception as fallback_error:
+            print(f"[ERROR] All download locations failed: {fallback_error}")
             return False
 
-    except Exception as e:
-        print(f"[ERROR] Ultralytics method failed: {e}")
-        return False
-
-
-def download_direct():
-    """Download pre-converted ONNX model directly."""
-    print("[INFO] Attempting direct download...")
-
-    url = "https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.onnx"
-    output_path = "yolov8n.onnx"
-
-    try:
-        print(f"[INFO] Downloading from: {url}")
-        urllib.request.urlretrieve(url, output_path)
-
-        if os.path.exists(output_path):
-            print(f"[SUCCESS] Model saved: {os.path.abspath(output_path)}")
-            print(f"[INFO] Model size: {os.path.getsize(output_path) / 1024 / 1024:.2f} MB")
+    if os.path.exists(target_path):
+        file_size_mb = os.path.getsize(target_path) / 1024 / 1024
+        print(f"[SUCCESS] Model verified and saved: {os.path.abspath(target_path)}")
+        print(f"[INFO] Model Size: {file_size_mb:.2f} MB")
+        
+        # التأكد من أن الملف سليم وحجمه طبيعي وليس فارغاً
+        if file_size_mb > 1.0:
             return True
         else:
-            print("[ERROR] Download completed but file not found")
+            print("[ERROR] Downloaded file is corrupted or too small.")
             return False
-
-    except Exception as e:
-        print(f"[ERROR] Direct download failed: {e}")
+    else:
+        print("[ERROR] Download completed but file was not registered on disk.")
         return False
-
 
 def main():
-    """Main download routine."""
     print("=" * 60)
-    print("YOLOv8 ONNX Model Downloader")
+    print("Automated YOLOv8 ONNX Model Downloader for Android Build")
     print("=" * 60)
-    print()
 
     target_path = "yolov8n.onnx"
-    if os.path.exists(target_path):
-        print(f"[INFO] Model already exists: {os.path.abspath(target_path)}")
+    
+    # إذا كان الملف موجوداً مسبقاً، يتخطى التحميل مباشرة لمنع إضاعة الوقت في سيرفر البناء
+    if os.path.exists(target_path) and os.path.getsize(target_path) > 1024 * 1024:
+        print(f"[INFO] Model already exists natively: {os.path.abspath(target_path)}")
         print(f"[INFO] Size: {os.path.getsize(target_path) / 1024 / 1024:.2f} MB")
-        response = input("[PROMPT] Re-download? (y/N): ").strip().lower()
-        if response != 'y':
-            print("[INFO] Keeping existing model")
-            return
+        print("[INFO] Skipping download. Ready for bundling.")
+        sys.exit(0)
 
-    print()
-    print("Select download method:")
-    print("  1. Ultralytics (recommended)")
-    print("  2. Direct download (pre-converted)")
-    print("  0. Exit")
-    print()
-
-    choice = input("[PROMPT] Enter choice (1/2/0): ").strip()
-
-    success = False
-
-    if choice == '1':
-        success = download_with_ultralytics()
-    elif choice == '2':
-        success = download_direct()
-    elif choice == '0':
-        print("[INFO] Cancelled")
-        return
-    else:
-        print("[WARN] Invalid choice, trying all methods...")
-        success = download_with_ultralytics() or download_direct()
+    # تشغيل التحميل الأوتوماتيكي الصامت
+    success = download_direct()
 
     print()
     if success:
         print("=" * 60)
-        print("[SUCCESS] Model download complete!")
-        print("[INFO] You can now build the APK with: buildozer android debug")
+        print("[SUCCESS] Automated model inclusion complete!")
+        print("[INFO] Ready for Buildozer packaging workflow.")
         print("=" * 60)
+        sys.exit(0)
     else:
         print("=" * 60)
-        print("[ERROR] Model download failed!")
-        print("[INFO] Please download manually from:")
-        print("[INFO] https://github.com/ultralytics/assets/releases")
+        print("[CRITICAL] Automated model preparation failed.")
+        print("[FIX] Ensure network accessibility or embed the model manually in the repository.")
         print("=" * 60)
-
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
